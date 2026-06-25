@@ -26,14 +26,14 @@
 
 ```
         ┌─────────────────────────────────────────────┐
-        │   "I have 3 ledgers, 47 stock items, GST     │
-        │    due Friday, and a calculator from 2009."  │
+        │   "I have 3 ledgers, 47 stock items, GST    │
+        │    due Friday, and a calculator from 2009." │
         └─────────────────────────────────────────────┘
                           │
             (•_•)         │  ...enter ezeERP
            <)   )╯        ▼
             /   \    ╔══════════════════════════╗
-                     ║  type. tab. done.  ⌨️     ║
+                     ║  type. tab. done.  ⌨️    ║
            \(•_•)/   ╚══════════════════════════╝
             (   (>      books balanced. 🎉
             /   \
@@ -68,8 +68,8 @@
    │  Next.js 15   │◄────►│  FastAPI       │◄────►│ PostgreSQL   │
    │  React 19     │ HTTP │  SQLAlchemy    │ ORM  │              │
    │  TypeScript   │ JSON │  Alembic       │      │  + exports:  │
-   │  TanStack Tbl │      │  Pydantic      │      │  📄 ReportLab │
-   │  Tailwind CSS │      │  JWT (jose)    │      │  📊 OpenPyXL  │
+   │  TanStack Tbl │      │  Pydantic      │      │  📄 ReportLab│
+   │  Tailwind CSS │      │  JWT (jose)    │      │  📊 OpenPyXL │
    └───────────────┘      └────────────────┘      └──────────────┘
 ```
 
@@ -158,6 +158,6 @@ npm run dev
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:06b6d4,100:4f46e5&height=120&section=footer" width="100%" />
 
-**Built with ☕ and keyboard shortcuts** · [Eshwar02/ezeERP](https://github.com/Eshwar02/ezeERP)
+**Built with care** · [Eshwar02/ezeERP](https://github.com/Eshwar02/ezeERP)
 
 </div>
