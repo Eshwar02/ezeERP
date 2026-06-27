@@ -14,6 +14,10 @@ const NAV = [
   { href: "/masters/suppliers", label: "Suppliers" },
   { href: "/vouchers/sales", label: "Sales Voucher", hint: "F8" },
   { href: "/vouchers/purchase", label: "Purchase Voucher", hint: "F9" },
+  { href: "/vouchers/payment", label: "Payment Voucher", hint: "F5" },
+  { href: "/vouchers/receipt", label: "Receipt Voucher", hint: "F6" },
+  { href: "/vouchers/journal", label: "Journal Voucher", hint: "F7" },
+  { href: "/vouchers/contra", label: "Contra Voucher" },
 ];
 
 export function Shell({ children, title }: { children: React.ReactNode; title: string }) {
