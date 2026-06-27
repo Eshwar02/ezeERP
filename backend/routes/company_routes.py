@@ -5,6 +5,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from config import Config
 from database import get_session
 from models import Company
+from services import seed_system_ledgers
 
 company_bp = Blueprint("company", __name__)
 
@@ -35,6 +36,7 @@ def create_company():
     company = Company(user_id=user_id, **{f: data.get(f) for f in _FIELDS})
     db.add(company)
     db.commit()
+    seed_system_ledgers(db, company.id)
     return jsonify(company.to_dict()), 201
 
 

@@ -92,6 +92,7 @@ class Ledger(Base):
     opening_balance: Mapped[float] = mapped_column(Float, default=0.0)
     balance: Mapped[float] = mapped_column(Float, default=0.0)
     group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id"))
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def to_dict(self):
         return {
@@ -101,6 +102,7 @@ class Ledger(Base):
             "opening_balance": self.opening_balance,
             "balance": self.balance,
             "group_id": self.group_id,
+            "is_system": self.is_system,
         }
 
 
@@ -313,4 +315,58 @@ class PurchaseItem(Base):
             "rate": self.rate,
             "gst_percentage": self.gst_percentage,
             "amount": self.amount,
+        }
+
+
+class Voucher(Base):
+    """Double-entry accounting voucher header: Contra, Payment, Receipt, Journal."""
+    __tablename__ = "vouchers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    voucher_type: Mapped[str] = mapped_column(String(20), nullable=False)  # Contra/Payment/Receipt/Journal
+    number: Mapped[str] = mapped_column(String(40), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    narration: Mapped[str | None] = mapped_column(Text)
+    total: Mapped[float] = mapped_column(Float, default=0.0)  # sum of debits (= sum of credits)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    entries: Mapped[list["VoucherEntry"]] = relationship(
+        back_populates="voucher", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (UniqueConstraint("company_id", "voucher_type", "number", name="uq_voucher_number"),)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "voucher_type": self.voucher_type,
+            "number": self.number,
+            "date": self.date.isoformat() if self.date else None,
+            "narration": self.narration,
+            "total": self.total,
+            "entries": [e.to_dict() for e in self.entries],
+        }
+
+
+class VoucherEntry(Base):
+    """A single debit or credit line of a voucher (general ledger posting)."""
+    __tablename__ = "voucher_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    voucher_id: Mapped[int] = mapped_column(ForeignKey("vouchers.id"), nullable=False, index=True)
+    ledger_id: Mapped[int] = mapped_column(ForeignKey("ledgers.id"), nullable=False, index=True)
+    dr_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    cr_amount: Mapped[float] = mapped_column(Float, default=0.0)
+
+    voucher: Mapped["Voucher"] = relationship(back_populates="entries")
+    ledger: Mapped["Ledger"] = relationship()
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "ledger_id": self.ledger_id,
+            "ledger_name": self.ledger.name if self.ledger else None,
+            "dr_amount": self.dr_amount,
+            "cr_amount": self.cr_amount,
         }

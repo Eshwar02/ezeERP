@@ -7,12 +7,15 @@ from datetime import datetime, timezone
 
 from models import (
     Customer,
+    Ledger,
     Purchase,
     PurchaseItem,
     Sale,
     SaleItem,
     StockItem,
     Supplier,
+    Voucher,
+    VoucherEntry,
 )
 
 
@@ -120,3 +123,93 @@ def create_purchase(db, company_id, data):
 
     db.commit()
     return purchase
+
+
+# --- Accounting: system ledgers + double-entry vouchers (PDF Section 7) ---
+
+# (name, ledger_type, nature) for the default chart of accounts seeded per company.
+_SYSTEM_LEDGERS = [
+    ("Cash", "Cash", "Asset"),
+    ("Bank", "Bank", "Asset"),
+    ("Sundry Debtors", "Customer", "Asset"),
+    ("Sundry Creditors", "Supplier", "Liability"),
+    ("Sales", "Income", "Income"),
+    ("Purchase", "Expense", "Expense"),
+    ("GST Output", "Liability", "Liability"),
+    ("GST Input", "Asset", "Asset"),
+]
+
+_VOUCHER_PREFIX = {"Contra": "CON", "Payment": "PAY", "Receipt": "RCP", "Journal": "JRN"}
+
+
+def seed_system_ledgers(db, company_id):
+    """Create the default system ledgers for a company if they don't exist. Idempotent."""
+    existing = {
+        l.name for l in db.query(Ledger).filter_by(company_id=company_id, is_system=True).all()
+    }
+    created = False
+    for name, ltype, nature in _SYSTEM_LEDGERS:
+        if name not in existing:
+            db.add(Ledger(company_id=company_id, name=name, ledger_type=ltype, is_system=True))
+            created = True
+    if created:
+        db.commit()
+
+
+def create_voucher(db, company_id, data):
+    """Create a double-entry voucher (Contra/Payment/Receipt/Journal).
+
+    data: {voucher_type, date?, narration?, entries:[{ledger_id, dr_amount, cr_amount}]}
+    Enforces >=2 lines and sum(debits) == sum(credits). Posts each line to Ledger.balance.
+    """
+    vtype = (data.get("voucher_type") or "").strip().title()
+    if vtype not in _VOUCHER_PREFIX:
+        raise ValueError("Invalid voucher_type (Contra/Payment/Receipt/Journal)")
+
+    raw = data.get("entries") or []
+    lines = []
+    dr_total = cr_total = 0.0
+    for e in raw:
+        ledger_id = e.get("ledger_id")
+        dr = round(float(e.get("dr_amount") or 0), 2)
+        cr = round(float(e.get("cr_amount") or 0), 2)
+        if not ledger_id or (dr <= 0 and cr <= 0):
+            continue
+        if dr > 0 and cr > 0:
+            raise ValueError("A line cannot have both debit and credit")
+        ledger = db.get(Ledger, int(ledger_id))
+        if not ledger or ledger.company_id != company_id:
+            raise ValueError("Ledger not found or access denied")
+        lines.append((ledger, dr, cr))
+        dr_total += dr
+        cr_total += cr
+
+    if len(lines) < 2:
+        raise ValueError("At least two ledger lines are required")
+    if round(dr_total, 2) != round(cr_total, 2):
+        raise ValueError("Total debit and credit must be equal")
+
+    number = data.get("number") or _next_voucher_number(db, company_id, vtype)
+    voucher = Voucher(
+        company_id=company_id,
+        voucher_type=vtype,
+        number=number,
+        narration=data.get("narration"),
+        total=round(dr_total, 2),
+    )
+    db.add(voucher)
+    db.flush()
+
+    for ledger, dr, cr in lines:
+        db.add(VoucherEntry(voucher_id=voucher.id, ledger_id=ledger.id, dr_amount=dr, cr_amount=cr))
+        ledger.balance = (ledger.balance or 0) + dr - cr
+
+    db.commit()
+    return voucher
+
+
+def _next_voucher_number(db, company_id, vtype):
+    prefix = _VOUCHER_PREFIX[vtype]
+    count = db.query(Voucher).filter_by(company_id=company_id, voucher_type=vtype).count()
+    year = datetime.now(timezone.utc).year
+    return f"{prefix}-{year}-{count + 1:04d}"
