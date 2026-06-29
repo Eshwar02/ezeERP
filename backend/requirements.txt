@@ -1,11 +1,7 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-alembic
-pydantic-settings
-python-jose[cryptography]
-passlib[bcrypt]
+Flask
+Flask-Cors
+Flask-JWT-Extended
+SQLAlchemy
 reportlab
 openpyxl
 psycopg[binary]
-
