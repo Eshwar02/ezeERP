@@ -68,8 +68,8 @@ function ShellInner({ children, title }: { children: React.ReactNode; title: str
   if (!ready) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-64 shrink-0 border-r border-slate-200 bg-white">
+    <div className="flex h-screen overflow-hidden">
+      <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2 px-5 py-4">
           <span className="text-xl font-black">
             <span className="text-brand-green">eze</span>
@@ -110,7 +110,7 @@ function ShellInner({ children, title }: { children: React.ReactNode; title: str
         </button>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
           <h1 className="text-lg font-bold text-slate-800">{title}</h1>
           <Link href="/companies" className="text-xs text-brand-blue hover:underline">
