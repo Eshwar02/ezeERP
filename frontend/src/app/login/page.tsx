@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   function loginWithGoogle() {
-    account.createOAuth2Session(
+    account.createOAuth2Token(
       OAuthProvider.Google,
       `${window.location.origin}/auth/callback`,
       `${window.location.origin}/login`,

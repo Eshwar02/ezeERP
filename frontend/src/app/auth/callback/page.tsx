@@ -1,17 +1,27 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { account } from "@/lib/appwrite";
 import { api, setToken } from "@/lib/api";
+import { Suspense } from "react";
 
-export default function AuthCallback() {
+function CallbackInner() {
   const router = useRouter();
+  const params = useSearchParams();
   const [err, setErr] = useState("");
 
   useEffect(() => {
     async function exchange() {
       try {
+        const userId = params.get("userId");
+        const secret = params.get("secret");
+        if (!userId || !secret) throw new Error("Missing OAuth params");
+
+        // Create Appwrite session from OAuth token
+        await account.createSession(userId, secret);
+        // Get short-lived JWT from that session
         const { jwt } = await account.createJWT();
+        // Exchange with Flask for app JWT
         const res = await api<{ token: string }>("/auth/appwrite", {
           method: "POST",
           body: { jwt },
@@ -23,7 +33,7 @@ export default function AuthCallback() {
       }
     }
     exchange();
-  }, [router]);
+  }, [router, params]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-green/10 via-white to-brand-blue/10">
@@ -37,5 +47,13 @@ export default function AuthCallback() {
           : <p className="text-sm text-slate-500">Signing you in…</p>}
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense>
+      <CallbackInner />
+    </Suspense>
   );
 }
