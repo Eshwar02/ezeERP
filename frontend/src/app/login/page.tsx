@@ -1,7 +1,16 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { account, OAuthProvider } from "@/lib/appwrite";
+import { api, setToken } from "@/lib/api";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
   function loginWithGoogle() {
     account.createOAuth2Session(
       OAuthProvider.Google,
@@ -10,17 +19,35 @@ export default function LoginPage() {
     );
   }
 
+  async function loginWithEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(""); setLoading(true);
+    try {
+      const res = await api<{ token: string }>("/auth/login", {
+        method: "POST",
+        body: { email, password },
+      });
+      setToken(res.token);
+      router.push("/companies");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-green/10 via-white to-brand-blue/10">
-      <div className="card w-full max-w-sm p-8 text-center">
-        <div className="mb-2 text-3xl font-black">
+      <div className="card w-full max-w-sm p-8">
+        <div className="mb-2 text-center text-3xl font-black">
           <span className="text-brand-green">eze</span>
           <span className="text-brand-blue">ERP</span>
         </div>
-        <p className="mb-8 text-sm text-slate-500">Billing, Inventory &amp; Accounting</p>
+        <p className="mb-6 text-center text-sm text-slate-500">Billing, Inventory &amp; Accounting</p>
+
         <button
           onClick={loginWithGoogle}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 hover:shadow"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -31,6 +58,23 @@ export default function LoginPage() {
           </svg>
           Continue with Google
         </button>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs text-slate-400">or</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        {err && <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
+        <form onSubmit={loginWithEmail}>
+          <label className="label">Email</label>
+          <input className="input mb-4" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          <label className="label">Password</label>
+          <input className="input mb-6" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <button className="btn-green w-full" disabled={loading}>
+            {loading ? "Signing in…" : "Login"}
+          </button>
+        </form>
       </div>
     </div>
   );
