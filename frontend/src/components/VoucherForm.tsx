@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { useAction } from "@/lib/actionBus";
+import { ACTIONS } from "@/lib/keymap";
 import { inr } from "@/lib/utils";
 
 type Item = { id: number; name: string; selling_price: number; purchase_price: number; gst_percentage: number };
@@ -9,20 +11,22 @@ type Line = { stock_item_id: number | ""; name: string; quantity: number; rate: 
 
 const blankLine = (): Line => ({ stock_item_id: "", name: "", quantity: 1, rate: 0, gst_percentage: 0 });
 
-// Shared voucher entry form for Sales (F8) and Purchase (F9).
+// Shared voucher entry form for Sales (F8), Purchase (F9), Credit Note (Alt+F8), Debit Note (Alt+F9).
 export function VoucherForm({
-  kind, // "sales" | "purchase"
+  kind,
   partyEndpoint,
   partyLabel,
-  partyKey, // "customer_id" | "supplier_id"
-  priceKey, // "selling_price" | "purchase_price"
+  partyKey,
+  priceKey,
+  saveLabel,
   onSaved,
 }: {
-  kind: "sales" | "purchase";
+  kind: "sales" | "purchase" | "credit-notes" | "debit-notes";
   partyEndpoint: string;
   partyLabel: string;
   partyKey: "customer_id" | "supplier_id";
   priceKey: "selling_price" | "purchase_price";
+  saveLabel?: string;
   onSaved: (saved: any) => void;
 }) {
   const [items, setItems] = useState<Item[]>([]);
@@ -30,6 +34,14 @@ export function VoucherForm({
   const [partyId, setPartyId] = useState<number | "">("");
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [err, setErr] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  function addLine() {
+    setLines((ls) => [...ls, blankLine()]);
+  }
+  function focusFirst() {
+    rootRef.current?.querySelector<HTMLElement>("select,input,button")?.focus();
+  }
 
   useEffect(() => {
     api<Item[]>("/masters/stock-items", { company: true }).then(setItems).catch(() => {});
@@ -89,8 +101,12 @@ export function VoucherForm({
     }
   }
 
+  useAction(ACTIONS.save, save);
+  useAction(ACTIONS.addLine, addLine);
+  useAction(ACTIONS.focusFirst, focusFirst);
+
   return (
-    <div className="card p-5">
+    <div ref={rootRef} className="card p-5">
       {err && <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
       <div className="mb-4 max-w-sm">
         <label className="label">{partyLabel}</label>
@@ -139,7 +155,7 @@ export function VoucherForm({
         </tbody>
       </table>
 
-      <button className="btn-ghost mt-3 text-xs" onClick={() => setLines((ls) => [...ls, blankLine()])}>+ Add line</button>
+      <button className="btn-ghost mt-3 text-xs" onClick={addLine}>+ Add line <span className="kbd ml-1">Alt+N</span></button>
 
       <div className="mt-4 flex items-end justify-between">
         <div className="text-sm text-slate-500">
@@ -147,7 +163,7 @@ export function VoucherForm({
           <div>Tax: <span className="font-medium text-slate-700">{inr(tax)}</span></div>
           <div className="text-base">Total: <span className="font-bold text-brand-green">{inr(total)}</span></div>
         </div>
-        <button className="btn-green" onClick={save}>Save {kind === "sales" ? "Sale" : "Purchase"}</button>
+        <button className="btn-green" onClick={save}>{saveLabel ?? (kind === "sales" ? "Save Sale" : kind === "purchase" ? "Save Purchase" : kind === "credit-notes" ? "Save Credit Note" : "Save Debit Note")} <span className="kbd ml-1 border-white/40 bg-white/20 text-white">Ctrl+S</span></button>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ export const modules: ModuleLink[] = [
   { label: "Inventory", href: "/masters/stock-items" },
   { label: "Accounting", href: "/vouchers/journal" },
   { label: "Banking", href: "/vouchers/contra" },
-  { label: "GST", href: "/masters/customers" },
-  { label: "Reports", href: "/vouchers/receipt" },
+  { label: "GST", href: "/reports/gst" },
+  { label: "Reports", href: "/reports/balance-sheet" },
   { label: "Administration", href: "/companies" },
 ];

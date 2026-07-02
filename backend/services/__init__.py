@@ -6,7 +6,11 @@ Purchase voucher -> add purchase, increase stock, update supplier dues.
 from datetime import datetime, timezone
 
 from models import (
+    CreditNote,
+    CreditNoteItem,
     Customer,
+    DebitNote,
+    DebitNoteItem,
     Ledger,
     Purchase,
     PurchaseItem,
@@ -213,3 +217,83 @@ def _next_voucher_number(db, company_id, vtype):
     count = db.query(Voucher).filter_by(company_id=company_id, voucher_type=vtype).count()
     year = datetime.now(timezone.utc).year
     return f"{prefix}-{year}-{count + 1:04d}"
+
+
+def create_credit_note(db, company_id, data):
+    """Sales Return: reverse inventory (stock returns), reduce customer outstanding balance."""
+    lines, subtotal, tax_total = _compute_lines(data.get("items") or [])
+    if not lines:
+        raise ValueError("At least one line item is required")
+
+    count = db.query(CreditNote).filter_by(company_id=company_id).count()
+    year = datetime.now(timezone.utc).year
+    note_number = data.get("note_number") or f"CN-{year}-{count + 1:04d}"
+    total = round(subtotal + tax_total, 2)
+
+    note = CreditNote(
+        company_id=company_id,
+        customer_id=data.get("customer_id"),
+        note_number=note_number,
+        subtotal=subtotal,
+        tax_total=tax_total,
+        total=total,
+    )
+    db.add(note)
+    db.flush()
+
+    for ln in lines:
+        db.add(CreditNoteItem(note_id=note.id, **ln))
+        # Stock returns — increase inventory
+        if ln["stock_item_id"]:
+            item = db.get(StockItem, ln["stock_item_id"])
+            if item and item.company_id == company_id:
+                item.quantity = (item.quantity or 0) + ln["quantity"]
+
+    # Customer balance reduces (goods returned)
+    if note.customer_id:
+        cust = db.get(Customer, note.customer_id)
+        if cust and cust.company_id == company_id:
+            cust.outstanding_balance = max(0, (cust.outstanding_balance or 0) - total)
+
+    db.commit()
+    return note
+
+
+def create_debit_note(db, company_id, data):
+    """Purchase Return: send stock back, reduce supplier outstanding dues."""
+    lines, subtotal, tax_total = _compute_lines(data.get("items") or [])
+    if not lines:
+        raise ValueError("At least one line item is required")
+
+    count = db.query(DebitNote).filter_by(company_id=company_id).count()
+    year = datetime.now(timezone.utc).year
+    note_number = data.get("note_number") or f"DN-{year}-{count + 1:04d}"
+    total = round(subtotal + tax_total, 2)
+
+    note = DebitNote(
+        company_id=company_id,
+        supplier_id=data.get("supplier_id"),
+        note_number=note_number,
+        subtotal=subtotal,
+        tax_total=tax_total,
+        total=total,
+    )
+    db.add(note)
+    db.flush()
+
+    for ln in lines:
+        db.add(DebitNoteItem(note_id=note.id, **ln))
+        # Stock goes back to supplier — decrease inventory
+        if ln["stock_item_id"]:
+            item = db.get(StockItem, ln["stock_item_id"])
+            if item and item.company_id == company_id:
+                item.quantity = (item.quantity or 0) - ln["quantity"]
+
+    # Supplier dues reduce (goods returned)
+    if note.supplier_id:
+        sup = db.get(Supplier, note.supplier_id)
+        if sup and sup.company_id == company_id:
+            sup.outstanding_dues = max(0, (sup.outstanding_dues or 0) - total)
+
+    db.commit()
+    return note

@@ -1,10 +1,20 @@
 export const shortcuts = [
   ["F1", "Company Selection"],
-  ["F2", "Change Financial Year"],
-  ["F3", "Company Information"],
-  ["F4", "Calculator"],
-  ["CTRL + H", "Dashboard"],
-  ["CTRL + K", "Global Search"],
-  ["CTRL + Q", "Logout"]
+  ["F4", "Contra Voucher"],
+  ["F5", "Payment Voucher"],
+  ["F6", "Receipt Voucher"],
+  ["F7", "Journal Voucher"],
+  ["F8", "Sales Voucher"],
+  ["F9", "Purchase Voucher"],
+  ["Alt+F8", "Credit Note"],
+  ["Alt+F9", "Debit Note"],
+  ["Ctrl+H", "Dashboard / Gateway"],
+  ["Ctrl+Q", "Logout"],
+  ["Alt+L", "Ledgers"],
+  ["Alt+S", "Stock Items"],
+  ["Alt+B", "Balance Sheet"],
+  ["Alt+P", "Profit & Loss"],
+  ["Alt+T", "Trial Balance"],
+  ["Alt+R", "Stock Summary"],
 ];
 

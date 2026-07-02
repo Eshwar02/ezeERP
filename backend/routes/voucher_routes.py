@@ -3,8 +3,8 @@ from flask import Blueprint, g, jsonify, request, send_file
 
 from auth import require_company
 from database import get_session
-from models import Customer, Purchase, Sale
-from services import create_purchase, create_sale
+from models import CreditNote, Customer, DebitNote, Purchase, Sale
+from services import create_credit_note, create_debit_note, create_purchase, create_sale
 from utils import build_invoice_pdf
 
 voucher_bp = Blueprint("voucher", __name__)
@@ -67,3 +67,39 @@ def add_purchase():
         db.rollback()
         return jsonify({"error": str(e)}), 400
     return jsonify(purchase.to_dict()), 201
+
+
+@voucher_bp.get("/credit-notes")
+def list_credit_notes():
+    db = get_session()
+    rows = db.query(CreditNote).filter_by(company_id=g.company.id).order_by(CreditNote.id.desc()).all()
+    return jsonify([n.to_dict() for n in rows])
+
+
+@voucher_bp.post("/credit-notes")
+def add_credit_note():
+    db = get_session()
+    try:
+        note = create_credit_note(db, g.company.id, request.get_json(silent=True) or {})
+    except ValueError as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 400
+    return jsonify(note.to_dict()), 201
+
+
+@voucher_bp.get("/debit-notes")
+def list_debit_notes():
+    db = get_session()
+    rows = db.query(DebitNote).filter_by(company_id=g.company.id).order_by(DebitNote.id.desc()).all()
+    return jsonify([n.to_dict() for n in rows])
+
+
+@voucher_bp.post("/debit-notes")
+def add_debit_note():
+    db = get_session()
+    try:
+        note = create_debit_note(db, g.company.id, request.get_json(silent=True) or {})
+    except ValueError as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 400
+    return jsonify(note.to_dict()), 201

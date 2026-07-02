@@ -370,3 +370,115 @@ class VoucherEntry(Base):
             "dr_amount": self.dr_amount,
             "cr_amount": self.cr_amount,
         }
+
+
+class CreditNote(Base):
+    """Credit Note = Sales Return (PDF Section 7). Stock increases, customer balance reduces."""
+    __tablename__ = "credit_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"))
+    note_number: Mapped[str] = mapped_column(String(40), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
+    tax_total: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[float] = mapped_column(Float, default=0.0)
+
+    items: Mapped[list["CreditNoteItem"]] = relationship(
+        back_populates="note", cascade="all, delete-orphan"
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "note_number": self.note_number,
+            "date": self.date.isoformat() if self.date else None,
+            "subtotal": self.subtotal,
+            "tax_total": self.tax_total,
+            "total": self.total,
+            "items": [i.to_dict() for i in self.items],
+        }
+
+
+class CreditNoteItem(Base):
+    __tablename__ = "credit_note_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    note_id: Mapped[int] = mapped_column(ForeignKey("credit_notes.id"), nullable=False, index=True)
+    stock_item_id: Mapped[int | None] = mapped_column(ForeignKey("stock_items.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    quantity: Mapped[float] = mapped_column(Float, default=0.0)
+    rate: Mapped[float] = mapped_column(Float, default=0.0)
+    gst_percentage: Mapped[float] = mapped_column(Float, default=0.0)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+
+    note: Mapped["CreditNote"] = relationship(back_populates="items")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "stock_item_id": self.stock_item_id,
+            "name": self.name,
+            "quantity": self.quantity,
+            "rate": self.rate,
+            "gst_percentage": self.gst_percentage,
+            "amount": self.amount,
+        }
+
+
+class DebitNote(Base):
+    """Debit Note = Purchase Return (PDF Section 7). Stock decreases, supplier dues reduce."""
+    __tablename__ = "debit_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
+    note_number: Mapped[str] = mapped_column(String(40), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
+    tax_total: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[float] = mapped_column(Float, default=0.0)
+
+    items: Mapped[list["DebitNoteItem"]] = relationship(
+        back_populates="note", cascade="all, delete-orphan"
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "supplier_id": self.supplier_id,
+            "note_number": self.note_number,
+            "date": self.date.isoformat() if self.date else None,
+            "subtotal": self.subtotal,
+            "tax_total": self.tax_total,
+            "total": self.total,
+            "items": [i.to_dict() for i in self.items],
+        }
+
+
+class DebitNoteItem(Base):
+    __tablename__ = "debit_note_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    note_id: Mapped[int] = mapped_column(ForeignKey("debit_notes.id"), nullable=False, index=True)
+    stock_item_id: Mapped[int | None] = mapped_column(ForeignKey("stock_items.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    quantity: Mapped[float] = mapped_column(Float, default=0.0)
+    rate: Mapped[float] = mapped_column(Float, default=0.0)
+    gst_percentage: Mapped[float] = mapped_column(Float, default=0.0)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+
+    note: Mapped["DebitNote"] = relationship(back_populates="items")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "stock_item_id": self.stock_item_id,
+            "name": self.name,
+            "quantity": self.quantity,
+            "rate": self.rate,
+            "gst_percentage": self.gst_percentage,
+            "amount": self.amount,
+        }
