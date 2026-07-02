@@ -10,7 +10,7 @@
 
 <br/>
 
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
@@ -51,11 +51,12 @@
 | 🔐 **Auth** | Email + password login, JWT-secured sessions |
 | 🏢 **Companies** | Multi-company accounting under one roof |
 | 📒 **Masters** | Ledgers, groups, stock items, units, customers, suppliers |
-| 🧾 **Vouchers** | Sales & purchase entry, keyboard-driven |
+| 🧾 **Vouchers** | Sales, purchase, credit/debit notes, payment, receipt, journal, contra |
 | 📦 **Inventory** | Live stock updates on every transaction |
 | 🧮 **Accounting** | Double-entry ledgers that actually balance |
 | 🧷 **GST** | GST-ready records & compliance scaffolding |
-| 📊 **Reports** | Export to PDF (ReportLab) & Excel (OpenPyXL) |
+| 📊 **Reports** | Balance sheet, P&L, trial balance, stock, sales, purchase, GST |
+| ⬇️ **Exports** | Every report → Excel (OpenPyXL); invoices → PDF (ReportLab) |
 | ⌨️ **Shortcuts** | Tally-style keyboard-first navigation |
 
 ---
@@ -65,19 +66,18 @@
 ```text
         FRONTEND                BACKEND                 DATA
    ┌───────────────┐      ┌────────────────┐      ┌──────────────┐
-   │  Next.js 15   │◄────►│  FastAPI       │◄────►│ PostgreSQL   │
+   │  Next.js 15   │◄────►│  Flask         │◄────►│ SQLite / PG  │
    │  React 19     │ HTTP │  SQLAlchemy    │ ORM  │              │
-   │  TypeScript   │ JSON │  Alembic       │      │  + exports:  │
-   │  TanStack Tbl │      │  Pydantic      │      │  📄 ReportLab│
-   │  Tailwind CSS │      │  JWT (jose)    │      │  📊 OpenPyXL │
+   │  TypeScript   │ JSON │  Flask-JWT-Ext │      │  + exports:  │
+   │  TanStack Tbl │      │  Flask-CORS    │      │  📄 ReportLab│
+   │  Tailwind CSS │      │                │      │  📊 OpenPyXL │
    └───────────────┘      └────────────────┘      └──────────────┘
 ```
 
-- **Backend:** FastAPI · SQLAlchemy · Alembic · Pydantic-Settings · python-jose · passlib[bcrypt]
+- **Backend:** Flask · SQLAlchemy · Flask-JWT-Extended · Flask-CORS
 - **Frontend:** Next.js · React · TypeScript · TanStack Table · clsx · tailwind-merge
-- **Database:** PostgreSQL (`psycopg`)
+- **Database:** SQLite (dev) · PostgreSQL (`psycopg`, prod)
 - **Exports:** ReportLab (PDF) · OpenPyXL (Excel)
-- **Deploy:** Docker
 
 ---
 
@@ -86,19 +86,18 @@
 ```text
 ezeERP/
 ├── backend/
-│   ├── app/
-│   │   ├── api/v1/endpoints/   # auth, companies, masters, billing, gst, reports…
-│   │   ├── core/              # config, database, security
-│   │   ├── models/            # SQLAlchemy models
-│   │   ├── schemas/           # Pydantic schemas
-│   │   └── services/          # business logic
-│   ├── routes/                # Flask-style route handlers
+│   ├── app.py                 # Flask entrypoint + app factory
+│   ├── routes/                # auth, companies, masters, vouchers, accounting, reports
+│   ├── models/                # SQLAlchemy models
+│   ├── services/              # business logic (vouchers, ledger posting)
+│   ├── utils/                 # invoice PDF + report Excel builders
+│   ├── auth/ · config/ · database/
 │   └── requirements.txt
 └── frontend/
     └── src/
-        ├── app/               # login, companies, masters, vouchers…
-        ├── components/        # DataTable, MasterCrud, VoucherForm, Shell
-        └── lib/               # api client, shortcuts, utils
+        ├── app/               # login, companies, masters, vouchers, reports…
+        ├── components/        # DataTable, MasterCrud, VoucherForm, ExportButton, Shell
+        └── lib/               # api client, keymap, shortcuts, utils
 ```
 
 ---
@@ -106,14 +105,14 @@ ezeERP/
 ## 🚀 Quick Start
 
 <details open>
-<summary><b>⚙️ Backend (FastAPI)</b></summary>
+<summary><b>⚙️ Backend (Flask)</b></summary>
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
-# → http://localhost:8000  (docs at /docs)
+python app.py
+# → http://localhost:5000  (health at /api/health)
 ```
 </details>
 
@@ -135,8 +134,8 @@ npm run dev
 ```
 [✓] Authentication            [✓] Sales & purchase vouchers
 [✓] Company selection         [✓] Inventory updates
-[✓] Masters (ledgers…)        [ ] Invoice generation
-[ ] Basic reports             [✓] Keyboard-first navigation
+[✓] Masters (ledgers…)        [✓] Invoice generation (PDF)
+[✓] Reports + Excel export    [✓] Keyboard-first navigation
 ```
 
 ---
