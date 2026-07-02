@@ -7,9 +7,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class Config:
     # SQLite for development; swap DATABASE_URL to a postgresql:// URL for production.
     # e.g. postgresql+psycopg2://user:pass@host:5432/ezeerp
-    DATABASE_URL = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'ezeerp.db')}"
-    )
+    _db = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'ezeerp.db')}")
+    # Railway provides postgresql:// but psycopg3 needs postgresql+psycopg://
+    DATABASE_URL = _db.replace("postgresql://", "postgresql+psycopg://", 1) if _db.startswith("postgresql://") else _db
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-change-me-in-production")
     JWT_ACCESS_TOKEN_EXPIRES_HOURS = int(
         os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_HOURS", "12")
