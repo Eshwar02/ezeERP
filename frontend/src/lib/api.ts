@@ -47,19 +47,30 @@ export async function api<T = any>(path: string, opts: Opts = {}): Promise<T> {
 export function downloadUrl(path: string): string {
   return `${BASE}${path}`;
 }
+// Backend now uploads to Appwrite and returns {url, file_id}.
+// Falls back to direct blob stream if Appwrite unavailable.
 export async function downloadPdf(path: string, filename: string) {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getToken();
   const cid = getCompanyId();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (cid) headers["X-Company-Id"] = cid;
   const res = await fetch(`${BASE}${path}`, { headers });
   if (!res.ok) throw new Error("Download failed");
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    const { url } = await res.json();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+  } else {
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }

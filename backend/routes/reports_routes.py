@@ -10,7 +10,7 @@ from models import (
     CreditNote, CreditNoteItem, Customer, DebitNote, DebitNoteItem,
     Ledger, Purchase, PurchaseItem, Sale, SaleItem, StockItem, Supplier, Voucher,
 )
-from utils import build_report_xlsx
+from utils import build_report_xlsx, upload_file, get_file_url
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -256,12 +256,15 @@ def export_report(report):
     title, view, to_sections = spec
     data = view().get_json()
     xlsx = build_report_xlsx(title, to_sections(data))
-    return send_file(
-        xlsx,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        as_attachment=True,
-        download_name=f"{report}.xlsx",
-    )
+    filename = f"{report}.xlsx"
+    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    try:
+        aw = upload_file(xlsx, filename, mime)
+        return jsonify({"url": get_file_url(aw["$id"]), "file_id": aw["$id"]})
+    except Exception:
+        # Fallback: stream directly if Appwrite unreachable
+        xlsx.seek(0)
+        return send_file(xlsx, mimetype=mime, as_attachment=True, download_name=filename)
 
 
 # ── Cash Flow (PDF Section 14) ──────────────────────────────────────────────

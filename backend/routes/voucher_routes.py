@@ -5,7 +5,7 @@ from auth import require_company
 from database import get_session
 from models import CreditNote, Customer, DebitNote, Purchase, Sale
 from services import create_credit_note, create_debit_note, create_purchase, create_sale
-from utils import build_invoice_pdf
+from utils import build_invoice_pdf, upload_file, get_file_url
 
 voucher_bp = Blueprint("voucher", __name__)
 
@@ -43,12 +43,13 @@ def sale_invoice_pdf(sale_id):
         return jsonify({"error": "Not found"}), 404
     customer = db.get(Customer, sale.customer_id) if sale.customer_id else None
     pdf = build_invoice_pdf(g.company, customer, sale)
-    return send_file(
-        pdf,
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=f"{sale.invoice_number}.pdf",
-    )
+    filename = f"{sale.invoice_number}.pdf"
+    try:
+        aw = upload_file(pdf, filename, "application/pdf")
+        return jsonify({"url": get_file_url(aw["$id"]), "file_id": aw["$id"]})
+    except Exception:
+        pdf.seek(0)
+        return send_file(pdf, mimetype="application/pdf", as_attachment=True, download_name=filename)
 
 
 @voucher_bp.get("/purchases")

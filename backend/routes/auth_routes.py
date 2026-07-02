@@ -1,6 +1,7 @@
-"""Authentication routes: register & login (email + password -> JWT)."""
+"""Authentication routes: Google OAuth (via Appwrite) + legacy email/password."""
 from datetime import timedelta
 
+import requests as http_requests
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
@@ -45,6 +46,46 @@ def login():
     user = db.query(User).filter_by(email=email).first()
     if not user or not verify_password(password, user.password_hash):
         return jsonify({"error": "Invalid credentials"}), 401
+
+    token = create_access_token(
+        identity=str(user.id),
+        expires_delta=timedelta(hours=Config.JWT_ACCESS_TOKEN_EXPIRES_HOURS),
+    )
+    return jsonify({"token": token, "user": user.to_dict()})
+
+
+@auth_bp.post("/appwrite")
+def appwrite_auth():
+    """Exchange Appwrite JWT for a Flask JWT. Creates user on first login."""
+    data = request.get_json(silent=True) or {}
+    aw_jwt = (data.get("jwt") or "").strip()
+    if not aw_jwt:
+        return jsonify({"error": "jwt required"}), 400
+
+    # Verify with Appwrite and get user identity
+    resp = http_requests.get(
+        f"{Config.APPWRITE_ENDPOINT}/account",
+        headers={
+            "X-Appwrite-Project": Config.APPWRITE_PROJECT,
+            "X-Appwrite-JWT": aw_jwt,
+        },
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        return jsonify({"error": "Invalid Appwrite JWT"}), 401
+
+    aw_user = resp.json()
+    email = aw_user.get("email", "").lower()
+    name = aw_user.get("name") or email.split("@")[0]
+    if not email:
+        return jsonify({"error": "No email from Appwrite"}), 400
+
+    db = get_session()
+    user = db.query(User).filter_by(email=email).first()
+    if not user:
+        user = User(name=name, email=email, password_hash="")
+        db.add(user)
+        db.commit()
 
     token = create_access_token(
         identity=str(user.id),

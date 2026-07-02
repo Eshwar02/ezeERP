@@ -1,5 +1,38 @@
-"""Utilities: invoice PDF generation (ReportLab) and report Excel export (openpyxl)."""
+"""Utilities: invoice PDF generation (ReportLab), report Excel export (openpyxl), Appwrite storage."""
 import io
+import uuid
+
+from appwrite.client import Client
+from appwrite.services.storage import Storage
+from appwrite.input_file import InputFile
+from config import Config
+
+def _appwrite_storage() -> Storage:
+    client = Client()
+    client.set_endpoint(Config.APPWRITE_ENDPOINT)
+    client.set_project(Config.APPWRITE_PROJECT)
+    client.set_key(Config.APPWRITE_KEY)
+    return Storage(client)
+
+def upload_file(buf: io.BytesIO, filename: str, mime: str) -> dict:
+    """Upload buf to Appwrite bucket. Returns Appwrite file document."""
+    storage = _appwrite_storage()
+    file_id = uuid.uuid4().hex
+    result = storage.create_file(
+        bucket_id=Config.APPWRITE_BUCKET,
+        file_id=file_id,
+        file=InputFile.from_bytes(buf.read(), filename=filename, mime_type=mime),
+    )
+    return result
+
+def get_file_url(file_id: str) -> str:
+    """Return direct download URL for a stored file."""
+    return (
+        f"{Config.APPWRITE_ENDPOINT}/storage/buckets/{Config.APPWRITE_BUCKET}"
+        f"/files/{file_id}/download"
+        f"?project={Config.APPWRITE_PROJECT}"
+    )
+
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
