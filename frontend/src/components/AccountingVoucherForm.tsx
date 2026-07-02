@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { useAction } from "@/lib/actionBus";
+import { ACTIONS } from "@/lib/keymap";
 import { inr } from "@/lib/utils";
 
 type Ledger = { id: number; name: string; ledger_type: string };
@@ -20,6 +22,14 @@ export function AccountingVoucherForm({
   const [lines, setLines] = useState<Line[]>([blankLine(), blankLine()]);
   const [narration, setNarration] = useState("");
   const [err, setErr] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  function addLine() {
+    setLines((ls) => [...ls, blankLine()]);
+  }
+  function focusFirst() {
+    rootRef.current?.querySelector<HTMLElement>("select,input,button")?.focus();
+  }
 
   useEffect(() => {
     api<Ledger[]>("/accounting/ledgers", { company: true }).then(setLedgers).catch(() => {});
@@ -56,8 +66,12 @@ export function AccountingVoucherForm({
     }
   }
 
+  useAction(ACTIONS.save, () => { if (balanced) save(); });
+  useAction(ACTIONS.addLine, addLine);
+  useAction(ACTIONS.focusFirst, focusFirst);
+
   return (
-    <div className="card p-5">
+    <div ref={rootRef} className="card p-5">
       {err && <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
 
       <table className="w-full text-sm">
@@ -115,8 +129,8 @@ export function AccountingVoucherForm({
         </tbody>
       </table>
 
-      <button className="btn-ghost mt-3 text-xs" onClick={() => setLines((ls) => [...ls, blankLine()])}>
-        + Add line
+      <button className="btn-ghost mt-3 text-xs" onClick={addLine}>
+        + Add line <span className="kbd ml-1">Alt+N</span>
       </button>
 
       <div className="mt-4 max-w-md">
@@ -133,7 +147,7 @@ export function AccountingVoucherForm({
           </div>
         </div>
         <button className="btn-green disabled:opacity-40" disabled={!balanced} onClick={save}>
-          Save {voucherType}
+          Save {voucherType} <span className="kbd ml-1 border-white/40 bg-white/20 text-white">Ctrl+S</span>
         </button>
       </div>
     </div>

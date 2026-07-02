@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Shell } from "@/components/Shell";
 import { DataTable } from "@/components/DataTable";
 import { api } from "@/lib/api";
+import { useAction } from "@/lib/actionBus";
+import { ACTIONS } from "@/lib/keymap";
 
 export type Field = {
   key: string;
@@ -28,6 +30,7 @@ export function MasterCrud<T extends { id: number }>({
   const [form, setForm] = useState<Record<string, any>>({});
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function load() {
     try {
@@ -61,12 +64,24 @@ export function MasterCrud<T extends { id: number }>({
     }
   }
 
+  function submit() {
+    formRef.current?.requestSubmit();
+  }
+  function reset() {
+    setForm({});
+    setMsg("");
+  }
+  function focusFirst() {
+    formRef.current?.querySelector<HTMLElement>("input,select")?.focus();
+  }
+
   return (
     <Shell title={title}>
+      <MasterCrudActions onSave={submit} onReset={reset} onFocusFirst={focusFirst} />
       {err && <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
       {msg && <div className="mb-4 rounded bg-brand-green/10 px-3 py-2 text-sm text-brand-greenDark">{msg}</div>}
 
-      <form onSubmit={create} className="card mb-6 grid gap-4 p-5 md:grid-cols-3">
+      <form ref={formRef} onSubmit={create} className="card mb-6 grid gap-4 p-5 md:grid-cols-3">
         {fields.map((f) => (
           <div key={f.key}>
             <label className="label">{f.label}{f.required ? " *" : ""}</label>
@@ -81,11 +96,28 @@ export function MasterCrud<T extends { id: number }>({
           </div>
         ))}
         <div className="flex items-end">
-          <button className="btn-green w-full">Save</button>
+          <button className="btn-green w-full">Save <span className="kbd ml-1 border-white/40 bg-white/20 text-white">Ctrl+S</span></button>
         </div>
       </form>
 
       <DataTable columns={columns} data={rows} />
     </Shell>
   );
+}
+
+// Registers master-form shortcuts. Rendered inside Shell so it lives under the
+// ActionBusProvider where useAction is valid.
+function MasterCrudActions({
+  onSave,
+  onReset,
+  onFocusFirst,
+}: {
+  onSave: () => void;
+  onReset: () => void;
+  onFocusFirst: () => void;
+}) {
+  useAction(ACTIONS.save, onSave);
+  useAction(ACTIONS.resetForm, onReset);
+  useAction(ACTIONS.focusFirst, onFocusFirst);
+  return null;
 }

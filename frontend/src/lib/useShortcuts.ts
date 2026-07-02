@@ -1,38 +1,50 @@
 "use client";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { logout } from "./api";
+import { useActionBus } from "./actionBus";
+import { GLOBAL_SHORTCUTS, matches, sectionFor, type Shortcut } from "./keymap";
 
-// Tally-style keyboard-only navigation (PDF Section 15).
-// Global + module shortcuts wired to router pushes.
+// Keyboard-first navigation (PDF Section 15). Both global shortcuts and the
+// current section's shortcuts are resolved from the keymap registry, so what the
+// ShortcutPanel shows is exactly what fires here.
 export function useShortcuts() {
   const router = useRouter();
+  const pathname = usePathname();
+  const bus = useActionBus();
+
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const alt = e.altKey;
-      const ctrl = e.ctrlKey || e.metaKey;
-      const k = e.key.toLowerCase();
+    const section = sectionFor(pathname);
+    // Section shortcuts take priority over globals on key conflicts.
+    const active: Shortcut[] = [...(section?.shortcuts ?? []), ...GLOBAL_SHORTCUTS];
 
-      // Global
-      if (e.key === "F1") return go(e, () => router.push("/companies"));
-      if (e.key === "F8") return go(e, () => router.push("/vouchers/sales"));
-      if (e.key === "F9") return go(e, () => router.push("/vouchers/purchase"));
-      if (ctrl && k === "h") return go(e, () => router.push("/dashboard"));
-      if (ctrl && k === "q") return go(e, () => { logout(); router.push("/login"); });
-
-      // Masters
-      if (alt && k === "l") return go(e, () => router.push("/masters/ledgers"));
-      if (alt && k === "s") return go(e, () => router.push("/masters/stock-items"));
-
-      // Billing
-      if (ctrl && k === "b") return go(e, () => router.push("/vouchers/sales"));
+    function fire(e: KeyboardEvent, s: Shortcut) {
+      e.preventDefault();
+      if (s.kind === "nav") {
+        router.push(s.href);
+      } else if (s.kind === "action") {
+        if (s.action === "logout") {
+          logout();
+          router.push("/login");
+        } else {
+          bus.run(s.action);
+        }
+      }
     }
+
+    function onKey(e: KeyboardEvent) {
+      // Let plain typing in inputs pass through; only intercept on a modifier
+      // or a function key so field entry is never hijacked.
+      const isFn = /^F\d{1,2}$/.test(e.key);
+      const hasMod = e.ctrlKey || e.metaKey || e.altKey;
+      if (!isFn && !hasMod) return;
+
+      for (const s of active) {
+        if (matches(e, s)) return fire(e, s);
+      }
+    }
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [router]);
-}
-
-function go(e: KeyboardEvent, fn: () => void) {
-  e.preventDefault();
-  fn();
+  }, [router, pathname, bus]);
 }
