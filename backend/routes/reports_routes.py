@@ -1,12 +1,13 @@
 """Reports module (PDF Section 14): Balance Sheet, P&L, Trial Balance,
 Stock Summary, Sales, Purchase, and GST reports. All company-scoped.
 """
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, g, jsonify, request, send_file
 from sqlalchemy import func
 
 from auth import require_company
 from database import get_session
 from models import Customer, Ledger, Purchase, Sale, StockItem, Supplier
+from utils import build_report_xlsx
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -171,3 +172,90 @@ def gst_report():
         "igst_collected": 0.0,
         "igst_paid": 0.0,
     })
+
+
+# --- Excel export (openpyxl). Reuses each report's JSON view, reshaped to sheets. ---
+
+def _sections_balance_sheet(d):
+    return [
+        {"name": "Assets", "headers": ["Name", "Type", "Balance"],
+         "rows": [[a["name"], a["type"], a["balance"]] for a in d["assets"]],
+         "total": ["Total Assets", "", d["total_assets"]]},
+        {"name": "Liabilities", "headers": ["Name", "Type", "Balance"],
+         "rows": [[l["name"], l["type"], l["balance"]] for l in d["liabilities"]],
+         "total": ["Total Liabilities", "", d["total_liabilities"]]},
+    ]
+
+
+def _sections_profit_loss(d):
+    return [
+        {"name": "Income", "headers": ["Source", "Amount"],
+         "rows": [["Sales", d["sales_total"]]] + [[l["name"], l["balance"]] for l in d["income_ledgers"]],
+         "total": ["Total Income", d["total_income"]]},
+        {"name": "Expenses", "headers": ["Source", "Amount"],
+         "rows": [["Purchases", d["purchase_total"]]] + [[l["name"], l["balance"]] for l in d["expense_ledgers"]],
+         "total": ["Total Expense", d["total_expense"]]},
+        {"name": "Result", "headers": ["", "Net Profit"], "rows": [], "total": ["", d["net_profit"]]},
+    ]
+
+
+def _sections_trial_balance(d):
+    return [{"name": "Trial Balance", "headers": ["Ledger", "Type", "Debit", "Credit"],
+             "rows": [[r["name"], r["ledger_type"], r["dr_balance"], r["cr_balance"]] for r in d["rows"]],
+             "total": ["Total", "", d["total_dr"], d["total_cr"]]}]
+
+
+def _sections_stock_summary(d):
+    return [{"name": "Stock Summary", "headers": ["Item", "SKU", "Qty", "Purchase", "Selling", "Value"],
+             "rows": [[i["name"], i["sku"], i["quantity"], i["purchase_price"], i["selling_price"], i["value"]] for i in d["items"]],
+             "total": ["Total Value", "", "", "", "", d["total_value"]]}]
+
+
+def _sections_sales(d):
+    return [{"name": "Sales", "headers": ["Invoice #", "Date", "Customer", "Subtotal", "Tax", "Total"],
+             "rows": [[s["invoice_number"], s["date"], s["customer"], s["subtotal"], s["tax_total"], s["total"]] for s in d["sales"]],
+             "total": ["Total", "", "", "", "", d["total"]]}]
+
+
+def _sections_purchases(d):
+    return [{"name": "Purchases", "headers": ["Bill #", "Date", "Supplier", "Subtotal", "Tax", "Total"],
+             "rows": [[p["bill_number"], p["date"], p["supplier"], p["subtotal"], p["tax_total"], p["total"]] for p in d["purchases"]],
+             "total": ["Total", "", "", "", "", d["total"]]}]
+
+
+def _sections_gst(d):
+    return [{"name": "GST Summary", "headers": ["Metric", "Amount"], "rows": [
+        ["GST Collected (Output)", d["gst_collected"]],
+        ["  CGST", d["cgst_collected"]],
+        ["  SGST", d["sgst_collected"]],
+        ["GST Paid (Input)", d["gst_paid"]],
+        ["  CGST", d["cgst_paid"]],
+        ["  SGST", d["sgst_paid"]],
+    ], "total": ["Net GST Payable", d["net_gst_payable"]]}]
+
+
+_EXPORTS = {
+    "balance-sheet": ("Balance Sheet", balance_sheet, _sections_balance_sheet),
+    "profit-loss": ("Profit and Loss", profit_loss, _sections_profit_loss),
+    "trial-balance": ("Trial Balance", trial_balance, _sections_trial_balance),
+    "stock-summary": ("Stock Summary", stock_summary, _sections_stock_summary),
+    "sales": ("Sales Report", sales_report, _sections_sales),
+    "purchases": ("Purchase Report", purchases_report, _sections_purchases),
+    "gst": ("GST Report", gst_report, _sections_gst),
+}
+
+
+@reports_bp.get("/<report>/export.xlsx")
+def export_report(report):
+    spec = _EXPORTS.get(report)
+    if not spec:
+        return jsonify({"error": "Unknown report"}), 404
+    title, view, to_sections = spec
+    data = view().get_json()
+    xlsx = build_report_xlsx(title, to_sections(data))
+    return send_file(
+        xlsx,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"{report}.xlsx",
+    )

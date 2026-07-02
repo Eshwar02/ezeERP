@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/Shell";
+import { ExportButton } from "@/components/ExportButton";
 import { api } from "@/lib/api";
 import { inr } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ export default function ProfitLossPage() {
 
   return (
     <Shell title="Profit & Loss (Alt+P)">
+      <div className="mb-4 flex justify-end"><ExportButton report="profit-loss" /></div>
       {err && <div className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
       {!data ? (
         <p className="text-sm text-slate-400">Loading…</p>

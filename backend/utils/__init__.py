@@ -1,6 +1,8 @@
-"""Utilities: invoice PDF generation (ReportLab) per PDF Section 9."""
+"""Utilities: invoice PDF generation (ReportLab) and report Excel export (openpyxl)."""
 import io
 
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -86,5 +88,55 @@ def build_invoice_pdf(company, customer, sale):
     elements.append(Paragraph("Thank you for your business — powered by ezeERP", normal))
 
     doc.build(elements)
+    buf.seek(0)
+    return buf
+
+
+_XLSX_HEAD_FILL = PatternFill("solid", fgColor="21C25E")
+_XLSX_HEAD_FONT = Font(bold=True, color="FFFFFF")
+
+
+def build_report_xlsx(title, sections):
+    """Return a BytesIO .xlsx for a report.
+
+    sections: list of {name, headers:[str], rows:[[cell]], total?:[cell]}.
+    Each section becomes a heading row, a styled header row, data rows, and an
+    optional bold total row.
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title[:31]
+
+    r = 1
+    ws.cell(row=r, column=1, value=title).font = Font(bold=True, size=14, color="00A8EC")
+    r += 2
+
+    for sec in sections:
+        if sec.get("name"):
+            ws.cell(row=r, column=1, value=sec["name"]).font = Font(bold=True, size=12)
+            r += 1
+        headers = sec.get("headers") or []
+        for c, h in enumerate(headers, 1):
+            cell = ws.cell(row=r, column=c, value=h)
+            cell.fill = _XLSX_HEAD_FILL
+            cell.font = _XLSX_HEAD_FONT
+        r += 1
+        for row in sec.get("rows") or []:
+            for c, val in enumerate(row, 1):
+                ws.cell(row=r, column=c, value=val)
+            r += 1
+        total = sec.get("total")
+        if total:
+            for c, val in enumerate(total, 1):
+                ws.cell(row=r, column=c, value=val).font = Font(bold=True)
+            r += 1
+        r += 1
+
+    for col in ws.columns:
+        width = max((len(str(cell.value)) for cell in col if cell.value is not None), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(width + 2, 40)
+
+    buf = io.BytesIO()
+    wb.save(buf)
     buf.seek(0)
     return buf
