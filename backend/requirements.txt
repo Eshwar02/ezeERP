@@ -5,3 +5,6 @@ SQLAlchemy
 reportlab
 openpyxl
 psycopg[binary]
+appwrite
+requests
+gunicorn
