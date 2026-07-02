@@ -77,6 +77,22 @@ def register_crud(path, model, fields):
 register_crud("groups", Group, ["name", "nature"])
 register_crud("stock-groups", StockGroup, ["name"])
 register_crud("units", Unit, ["name"])
+
+
+@masters_bp.post("/stock-items/<int:item_id>/adjust")
+def adjust_stock(item_id):
+    """Manual stock adjustment (Section 8 — Stock Adjustment)."""
+    db = get_session()
+    item = db.get(StockItem, item_id)
+    if not item or item.company_id != g.company.id:
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    qty_change = float(data.get("qty_change") or 0)
+    if qty_change == 0:
+        return jsonify({"error": "qty_change cannot be zero"}), 400
+    item.quantity = (item.quantity or 0) + qty_change
+    db.commit()
+    return jsonify({**item.to_dict(), "adjustment": qty_change})
 register_crud(
     "ledgers",
     Ledger,

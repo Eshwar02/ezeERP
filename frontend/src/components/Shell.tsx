@@ -11,11 +11,17 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Gateway", hint: "Ctrl+H" },
+  // ── Masters ────────────────────────────────────────────────
   { href: "/masters/ledgers", label: "Ledgers", hint: "Alt+L" },
-  { href: "/masters/groups", label: "Groups" },
+  { href: "/masters/groups", label: "Groups", hint: "Alt+G" },
+  { href: "/masters/stock-groups", label: "Stock Groups" },
+  { href: "/masters/units", label: "Units", hint: "Alt+U" },
   { href: "/masters/stock-items", label: "Stock Items", hint: "Alt+S" },
-  { href: "/masters/customers", label: "Customers", hint: "Alt+C" },
-  { href: "/masters/suppliers", label: "Suppliers", hint: "Alt+U" },
+  { href: "/masters/customers", label: "Customers" },
+  { href: "/masters/suppliers", label: "Suppliers" },
+  // ── Inventory ──────────────────────────────────────────────
+  { href: "/inventory", label: "Inventory", hint: "Ctrl+I" },
+  // ── Vouchers ───────────────────────────────────────────────
   { href: "/vouchers/sales", label: "Sales Voucher", hint: "F8" },
   { href: "/vouchers/purchase", label: "Purchase Voucher", hint: "F9" },
   { href: "/vouchers/credit-note", label: "Credit Note", hint: "Alt+F8" },
@@ -24,12 +30,18 @@ const NAV = [
   { href: "/vouchers/receipt", label: "Receipt Voucher", hint: "F6" },
   { href: "/vouchers/journal", label: "Journal Voucher", hint: "F7" },
   { href: "/vouchers/contra", label: "Contra Voucher", hint: "F4" },
+  // ── Reports ────────────────────────────────────────────────
   { href: "/reports/balance-sheet", label: "Balance Sheet", hint: "Alt+B" },
   { href: "/reports/profit-loss", label: "Profit & Loss", hint: "Alt+P" },
   { href: "/reports/trial-balance", label: "Trial Balance", hint: "Alt+T" },
+  { href: "/reports/cash-flow", label: "Cash Flow", hint: "Alt+C" },
   { href: "/reports/stock-summary", label: "Stock Summary", hint: "Alt+R" },
+  { href: "/reports/low-stock", label: "Low Stock" },
+  { href: "/reports/item-movement", label: "Item Movement" },
   { href: "/reports/sales", label: "Sales Report" },
   { href: "/reports/purchases", label: "Purchase Report" },
+  { href: "/reports/customer-statement", label: "Customer Statement" },
+  { href: "/reports/supplier-statement", label: "Supplier Statement" },
   { href: "/reports/gst", label: "GST Report", hint: "Alt+X" },
 ];
 

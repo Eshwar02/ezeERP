@@ -6,7 +6,10 @@ from sqlalchemy import func
 
 from auth import require_company
 from database import get_session
-from models import Customer, Ledger, Purchase, Sale, StockItem, Supplier
+from models import (
+    CreditNote, CreditNoteItem, Customer, DebitNote, DebitNoteItem,
+    Ledger, Purchase, PurchaseItem, Sale, SaleItem, StockItem, Supplier, Voucher,
+)
 from utils import build_report_xlsx
 
 reports_bp = Blueprint("reports", __name__)
@@ -259,3 +262,148 @@ def export_report(report):
         as_attachment=True,
         download_name=f"{report}.xlsx",
     )
+
+
+# ── Cash Flow (PDF Section 14) ──────────────────────────────────────────────
+
+@reports_bp.get("/cash-flow")
+def cash_flow():
+    db = get_session()
+    cid = g.company.id
+    receipts = db.query(Voucher).filter_by(company_id=cid, voucher_type="Receipt").all()
+    payments = db.query(Voucher).filter_by(company_id=cid, voucher_type="Payment").all()
+    sales_total = float(db.query(func.sum(Sale.total)).filter(Sale.company_id == cid).scalar() or 0)
+    purchase_total = float(db.query(func.sum(Purchase.total)).filter(Purchase.company_id == cid).scalar() or 0)
+    other_in = round(sum(v.total for v in receipts), 2)
+    other_out = round(sum(v.total for v in payments), 2)
+    total_in = round(sales_total + other_in, 2)
+    total_out = round(purchase_total + other_out, 2)
+    return jsonify({
+        "inflows": [
+            {"label": "Sales Collections", "amount": round(sales_total, 2)},
+            {"label": "Other Receipts (Vouchers)", "amount": other_in},
+        ],
+        "outflows": [
+            {"label": "Purchase Payments", "amount": round(purchase_total, 2)},
+            {"label": "Other Payments (Vouchers)", "amount": other_out},
+        ],
+        "total_inflow": total_in,
+        "total_outflow": total_out,
+        "net_cash_flow": round(total_in - total_out, 2),
+    })
+
+
+# ── Low Stock Report ─────────────────────────────────────────────────────────
+
+@reports_bp.get("/low-stock")
+def low_stock():
+    db = get_session()
+    items = db.query(StockItem).filter_by(company_id=g.company.id).all()
+    rows = [
+        {
+            "id": it.id, "name": it.name, "sku": it.sku,
+            "quantity": it.quantity or 0,
+            "reorder_level": it.reorder_level or 0,
+            "shortage": round((it.reorder_level or 0) - (it.quantity or 0), 2),
+            "purchase_price": it.purchase_price or 0,
+        }
+        for it in items if (it.quantity or 0) <= (it.reorder_level or 0)
+    ]
+    return jsonify({"items": rows, "count": len(rows)})
+
+
+# ── Item Movement Report ─────────────────────────────────────────────────────
+
+@reports_bp.get("/item-movement")
+def item_movement_list():
+    db = get_session()
+    items = db.query(StockItem).filter_by(company_id=g.company.id).order_by(StockItem.name).all()
+    return jsonify([{"id": it.id, "name": it.name, "sku": it.sku, "quantity": it.quantity} for it in items])
+
+
+@reports_bp.get("/item-movement/<int:item_id>")
+def item_movement(item_id):
+    db = get_session()
+    cid = g.company.id
+    item = db.get(StockItem, item_id)
+    if not item or item.company_id != cid:
+        return jsonify({"error": "Not found"}), 404
+
+    movements = []
+    for pi in db.query(PurchaseItem).filter_by(stock_item_id=item_id).all():
+        p = db.get(Purchase, pi.purchase_id)
+        if p and p.company_id == cid:
+            movements.append({"date": p.date.isoformat()[:10], "type": "Purchase In", "ref": p.bill_number, "qty_in": pi.quantity, "qty_out": 0})
+    for si in db.query(SaleItem).filter_by(stock_item_id=item_id).all():
+        s = db.get(Sale, si.sale_id)
+        if s and s.company_id == cid:
+            movements.append({"date": s.date.isoformat()[:10], "type": "Sale Out", "ref": s.invoice_number, "qty_in": 0, "qty_out": si.quantity})
+    for cni in db.query(CreditNoteItem).filter_by(stock_item_id=item_id).all():
+        cn = db.get(CreditNote, cni.note_id)
+        if cn and cn.company_id == cid:
+            movements.append({"date": cn.date.isoformat()[:10], "type": "Credit Note (Return)", "ref": cn.note_number, "qty_in": cni.quantity, "qty_out": 0})
+    for dni in db.query(DebitNoteItem).filter_by(stock_item_id=item_id).all():
+        dn = db.get(DebitNote, dni.note_id)
+        if dn and dn.company_id == cid:
+            movements.append({"date": dn.date.isoformat()[:10], "type": "Debit Note (Return)", "ref": dn.note_number, "qty_in": 0, "qty_out": dni.quantity})
+
+    movements.sort(key=lambda x: x["date"])
+    return jsonify({
+        "item": item.to_dict(),
+        "movements": movements,
+        "total_in": sum(m["qty_in"] for m in movements),
+        "total_out": sum(m["qty_out"] for m in movements),
+        "current_qty": item.quantity or 0,
+    })
+
+
+# ── Customer Statement ───────────────────────────────────────────────────────
+
+@reports_bp.get("/customer-statement")
+def all_customers_statement():
+    db = get_session()
+    rows = db.query(Customer).filter_by(company_id=g.company.id).order_by(Customer.name).all()
+    return jsonify([c.to_dict() for c in rows])
+
+
+@reports_bp.get("/customer-statement/<int:customer_id>")
+def customer_statement(customer_id):
+    db = get_session()
+    cid = g.company.id
+    cust = db.get(Customer, customer_id)
+    if not cust or cust.company_id != cid:
+        return jsonify({"error": "Not found"}), 404
+    sales = db.query(Sale).filter_by(company_id=cid, customer_id=customer_id).order_by(Sale.date).all()
+    txns = [{"date": s.date.isoformat()[:10], "ref": s.invoice_number, "type": "Invoice", "amount": s.total} for s in sales]
+    return jsonify({
+        "customer": cust.to_dict(),
+        "transactions": txns,
+        "total_billed": round(sum(s.total for s in sales), 2),
+        "outstanding_balance": cust.outstanding_balance,
+    })
+
+
+# ── Supplier Statement ───────────────────────────────────────────────────────
+
+@reports_bp.get("/supplier-statement")
+def all_suppliers_statement():
+    db = get_session()
+    rows = db.query(Supplier).filter_by(company_id=g.company.id).order_by(Supplier.name).all()
+    return jsonify([s.to_dict() for s in rows])
+
+
+@reports_bp.get("/supplier-statement/<int:supplier_id>")
+def supplier_statement(supplier_id):
+    db = get_session()
+    cid = g.company.id
+    sup = db.get(Supplier, supplier_id)
+    if not sup or sup.company_id != cid:
+        return jsonify({"error": "Not found"}), 404
+    purchases = db.query(Purchase).filter_by(company_id=cid, supplier_id=supplier_id).order_by(Purchase.date).all()
+    txns = [{"date": p.date.isoformat()[:10], "ref": p.bill_number, "type": "Purchase", "amount": p.total} for p in purchases]
+    return jsonify({
+        "supplier": sup.to_dict(),
+        "transactions": txns,
+        "total_purchased": round(sum(p.total for p in purchases), 2),
+        "outstanding_dues": sup.outstanding_dues,
+    })
