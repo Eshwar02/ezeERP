@@ -15,7 +15,7 @@ export default function DashboardPage() {
         </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2">
+      <section className="grid gap-6">
         <div className="card p-6">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Main Modules</h2>
           <ul className="grid grid-cols-2 gap-2">
@@ -27,18 +27,6 @@ export default function DashboardPage() {
                 >
                   {module.label}
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="card p-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Keyboard Shortcuts</h2>
-          <ul className="space-y-2">
-            {shortcuts.map(([key, label]) => (
-              <li key={key} className="flex items-center justify-between text-sm text-slate-600">
-                <span className="kbd">{key}</span>
-                <span>{label}</span>
               </li>
             ))}
           </ul>
