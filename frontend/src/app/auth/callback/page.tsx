@@ -17,6 +17,8 @@ function CallbackInner() {
         const secret = params.get("secret");
         if (!userId || !secret) throw new Error("Missing OAuth params");
 
+        // Clear any stale session before creating new one
+        try { await account.deleteSession("current"); } catch (_) {}
         // Create Appwrite session from OAuth token
         await account.createSession(userId, secret);
         // Get short-lived JWT from that session
