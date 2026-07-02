@@ -29,6 +29,7 @@ const NAV = [
   { href: "/reports/trial-balance", label: "Trial Balance", hint: "Alt+T" },
   { href: "/reports/stock-summary", label: "Stock Summary", hint: "Alt+R" },
   { href: "/reports/sales", label: "Sales Report" },
+  { href: "/reports/purchases", label: "Purchase Report" },
   { href: "/reports/gst", label: "GST Report", hint: "Alt+X" },
 ];
 

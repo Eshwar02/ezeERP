@@ -1,20 +1,5 @@
-export const shortcuts = [
-  ["F1", "Company Selection"],
-  ["F4", "Contra Voucher"],
-  ["F5", "Payment Voucher"],
-  ["F6", "Receipt Voucher"],
-  ["F7", "Journal Voucher"],
-  ["F8", "Sales Voucher"],
-  ["F9", "Purchase Voucher"],
-  ["Alt+F8", "Credit Note"],
-  ["Alt+F9", "Debit Note"],
-  ["Ctrl+H", "Dashboard / Gateway"],
-  ["Ctrl+Q", "Logout"],
-  ["Alt+L", "Ledgers"],
-  ["Alt+S", "Stock Items"],
-  ["Alt+B", "Balance Sheet"],
-  ["Alt+P", "Profit & Loss"],
-  ["Alt+T", "Trial Balance"],
-  ["Alt+R", "Stock Summary"],
-];
+import { GLOBAL_SHORTCUTS } from "./keymap";
 
+// Derived from the keymap registry so the dashboard list can never drift from
+// the keys that actually fire. Shape kept as [combo, label] for the dashboard UI.
+export const shortcuts: [string, string][] = GLOBAL_SHORTCUTS.map((s) => [s.combo, s.label]);
