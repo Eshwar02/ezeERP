@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="assets/logo.svg" alt="ezeERP — Billing, Inventory &amp; Accounting" width="420" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:4f46e5,100:06b6d4&height=200&section=header&text=ezeERP&fontSize=80&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=ERP%20made%20ridiculously%20easy&descAlignY=58&descSize=20" width="100%" />
 
 <a href="https://github.com/Eshwar02/ezeERP">
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=2800&pause=900&color=06B6D4&center=true&vCenter=true&width=620&lines=Billing+%E2%80%A2+Inventory+%E2%80%A2+Accounting;Multi-company+%E2%80%A2+GST-ready+%E2%80%A2+Reports;Keyboard-first.+Mouse+optional." alt="Typing SVG" />
