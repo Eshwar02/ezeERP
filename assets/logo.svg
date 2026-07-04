@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120">
+  <!-- Icon mark -->
+  <rect x="0" y="10" width="100" height="100" rx="22" fill="url(#bg)"/>
+  <text x="50" y="72" font-family="system-ui, -apple-system, sans-serif" font-weight="900"
+        font-size="58" fill="white" text-anchor="middle">e</text>
+
+  <!-- Wordmark -->
+  <text x="118" y="82" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="72">
+    <tspan fill="#50C69E">eze</tspan><tspan fill="#3574B9">ERP</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="118" y="108" font-family="system-ui, -apple-system, sans-serif" font-size="18"
+        font-weight="500" fill="#94A3B8">Billing, Inventory &amp; Accounting</text>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#50C69E"/>
+      <stop offset="100%" stop-color="#3574B9"/>
+    </linearGradient>
+  </defs>
+</svg>
